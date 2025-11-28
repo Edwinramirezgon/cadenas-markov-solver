@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadenas de Markov - Solver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .matrix-input {
+            display: grid;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .matrix-row {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .matrix-cell {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .step {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .step-title {
+            color: #2c3e50;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .step-description {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .matrix-display {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            border-bottom-color: #3498db;
+            color: #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Cadenas de Markov</h1>
+            <p>Calculadora de Estados Estacionarios y Probabilidades de Transición</p>
+        </div>
+        
+        <div class="content">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('steady-state')">Estado Estacionario</div>
+                <div class="tab" onclick="switchTab('n-steps')">Probabilidades n-pasos</div>
+            </div>
+            
+            <!-- Tab 1: Estado Estacionario -->
+            <div id="steady-state" class="tab-content active">
+                <div class="input-section">
+                    <h3>Configuración de la Matriz de Transición</h3>
+                    
+                    <div class="form-group">
+                        <label for="matrix-size">Número de Estados:</label>
+                        <select id="matrix-size" onchange="generateMatrix()">
+                            <option value="2">2 Estados</option>
+                            <option value="3" selected>3 Estados</option>
+                            <option value="4">4 Estados</option>
+                            <option value="5">5 Estados</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Matriz de Transición P:</label>
+                        <div id="matrix-container"></div>
+                        <small style="color: #7f8c8d;">Cada fila debe sumar 1 (matriz estocástica)</small>
+                    </div>
+                    
+                    <button class="btn" onclick="solveSteadyState()">Calcular Estado Estacionario</button>
+                    <button class="btn btn-secondary" onclick="loadExample()">Cargar Ejemplo</button>
+                </div>
+            </div>
+            
+            <!-- Tab 2: Probabilidades n-pasos -->
+            <div id="n-steps" class="tab-content">
+                <div class="input-section">
+                    <h3>Probabilidades después de n pasos</h3>
+                    
+                    <div class="form-group">
+                        <label for="matrix-size-2">Número de Estados:</label>
+                        <select id="matrix-size-2" onchange="generateMatrix2()">
+                            <option value="2">2 Estados</option>
+                            <option value="3" selected>3 Estados</option>
+                            <option value="4">4 Estados</option>
+                            <option value="5">5 Estados</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Matriz de Transición P:</label>
+                        <div id="matrix-container-2"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Estado Inicial (distribución de probabilidad):</label>
+                        <div id="initial-state-container"></div>
+                        <small style="color: #7f8c8d;">Debe sumar 1</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="n-steps-input">Número de pasos:</label>
+                        <input type="number" id="n-steps-input" value="5" min="1" max="20">
+                    </div>
+                    
+                    <button class="btn" onclick="calculateNSteps()">Calcular Probabilidades</button>
+                    <button class="btn btn-secondary" onclick="loadExample2()">Cargar Ejemplo</button>
+                </div>
+            </div>
+            
+            <div id="results" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'steady-state';
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            currentTab = tabName;
+            
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function generateMatrix() {
+            const size = parseInt(document.getElementById('matrix-size').value);
+            const container = document.getElementById('matrix-container');
+            
+            let html = '<div class="matrix-input">';
+            for (let i = 0; i < size; i++) {
+                html += '<div class="matrix-row" style="grid-template-columns: repeat(' + size + ', 1fr);">';
+                for (let j = 0; j < size; j++) {
+                    html += `<input type="number" class="matrix-cell" id="p${i}${j}" step="0.01" min="0" max="1" placeholder="P${i+1}${j+1}">`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function generateMatrix2() {
+            const size = parseInt(document.getElementById('matrix-size-2').value);
+            const container = document.getElementById('matrix-container-2');
+            const initialContainer = document.getElementById('initial-state-container');
+            
+            let html = '<div class="matrix-input">';
+            for (let i = 0; i < size; i++) {
+                html += '<div class="matrix-row" style="grid-template-columns: repeat(' + size + ', 1fr);">';
+                for (let j = 0; j < size; j++) {
+                    html += `<input type="number" class="matrix-cell" id="p2_${i}${j}" step="0.01" min="0" max="1" placeholder="P${i+1}${j+1}">`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            container.innerHTML = html;
+            
+            let initialHtml = '<div class="matrix-row" style="grid-template-columns: repeat(' + size + ', 1fr);">';
+            for (let i = 0; i < size; i++) {
+                initialHtml += `<input type="number" class="matrix-cell" id="init${i}" step="0.01" min="0" max="1" placeholder="π${i+1}(0)">`;
+            }
+            initialHtml += '</div>';
+            initialContainer.innerHTML = initialHtml;
+        }
+        
+        function getMatrix(prefix = 'p') {
+            const size = parseInt(document.getElementById(currentTab === 'steady-state' ? 'matrix-size' : 'matrix-size-2').value);
+            const matrix = [];
+            
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const cellId = prefix === 'p' ? `p${i}${j}` : `p2_${i}${j}`;
+                    const value = parseFloat(document.getElementById(cellId).value) || 0;
+                    row.push(value);
+                }
+                matrix.push(row);
+            }
+            
+            return matrix;
+        }
+        
+        function getInitialState() {
+            const size = parseInt(document.getElementById('matrix-size-2').value);
+            const state = [];
+            
+            for (let i = 0; i < size; i++) {
+                const value = parseFloat(document.getElementById(`init${i}`).value) || 0;
+                state.push(value);
+            }
+            
+            return state;
+        }
+        
+        function showLoading() {
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Calculando solución paso a paso...</p>
+                </div>
+            `;
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function showError(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function formatMatrix(matrix) {
+            return matrix.map(row => 
+                '[' + row.map(val => val.toFixed(4)).join(', ') + ']'
+            ).join('<br>');
+        }
+        
+        function solveSteadyState() {
+            const matrix = getMatrix();
+            
+            showLoading();
+            
+            fetch('/solve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ matrix: matrix })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displaySteadyStateResults(data);
+            })
+            .catch(error => {
+                showError('Error de conexión: ' + error.message);
+            });
+        }
+        
+        function calculateNSteps() {
+            const matrix = getMatrix('p2_');
+            const initialState = getInitialState();
+            const nSteps = parseInt(document.getElementById('n-steps-input').value);
+            
+            showLoading();
+            
+            fetch('/n_steps', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    matrix: matrix,
+                    initial_state: initialState,
+                    n_steps: nSteps
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayNStepsResults(data);
+            })
+            .catch(error => {
+                showError('Error de conexión: ' + error.message);
+            });
+        }
+        
+        function displaySteadyStateResults(data) {
+            let html = '<div class="success">✅ Cálculo completado exitosamente</div>';
+            
+            data.steps.forEach(step => {
+                html += `
+                    <div class="step">
+                        <div class="step-title">Paso ${step.step}: ${step.title}</div>
+                        <div class="step-description">${step.description}</div>
+                `;
+                
+                if (step.matrix) {
+                    html += `<div class="matrix-display">Matriz P:<br>${formatMatrix(step.matrix)}</div>`;
+                }
+                
+                if (step.row_sums) {
+                    html += `<div class="matrix-display">Suma de filas: [${step.row_sums.map(x => x.toFixed(4)).join(', ')}]</div>`;
+                }
+                
+                if (step.matrix_PT) {
+                    html += `<div class="matrix-display">P^T:<br>${formatMatrix(step.matrix_PT)}</div>`;
+                }
+                
+                if (step.matrix_A) {
+                    html += `<div class="matrix-display">P^T - I:<br>${formatMatrix(step.matrix_A)}</div>`;
+                }
+                
+                if (step.matrix_modified) {
+                    html += `<div class="matrix-display">Sistema modificado:<br>${formatMatrix(step.matrix_modified)}</div>`;
+                }
+                
+                if (step.steady_state) {
+                    html += `
+                        <div class="matrix-display">
+                            <strong>Estado Estacionario π:</strong><br>
+                            Decimales: [${step.steady_state.map(x => x.toFixed(6)).join(', ')}]<br>
+                            Fracciones: [${step.steady_state_fractions.join(', ')}]
+                        </div>
+                    `;
+                }
+                
+                if (step.verification) {
+                    html += `
+                        <div class="matrix-display">
+                            Verificación πP: [${step.verification.map(x => x.toFixed(6)).join(', ')}]<br>
+                            Error: ${step.error.toExponential(3)}<br>
+                            ${step.valid ? '✅ Verificación exitosa' : '❌ Error en verificación'}
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            });
+            
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function displayNStepsResults(data) {
+            let html = '<div class="success">✅ Cálculo de probabilidades completado</div>';
+            
+            data.steps.forEach(step => {
+                html += `
+                    <div class="step">
+                        <div class="step-title">${step.description}</div>
+                        <div class="matrix-display">
+                            π(${step.step}) = [${step.state.map(x => x.toFixed(6)).join(', ')}]
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function loadExample() {
+            document.getElementById('matrix-size').value = '3';
+            generateMatrix();
+            
+            document.getElementById('p00').value = '0.7';
+            document.getElementById('p01').value = '0.2';
+            document.getElementById('p02').value = '0.1';
+            
+            document.getElementById('p10').value = '0.3';
+            document.getElementById('p11').value = '0.4';
+            document.getElementById('p12').value = '0.3';
+            
+            document.getElementById('p20').value = '0.2';
+            document.getElementById('p21').value = '0.6';
+            document.getElementById('p22').value = '0.2';
+        }
+        
+        function loadExample2() {
+            document.getElementById('matrix-size-2').value = '3';
+            generateMatrix2();
+            
+            document.getElementById('p2_00').value = '0.7';
+            document.getElementById('p2_01').value = '0.2';
+            document.getElementById('p2_02').value = '0.1';
+            
+            document.getElementById('p2_10').value = '0.3';
+            document.getElementById('p2_11').value = '0.4';
+            document.getElementById('p2_12').value = '0.3';
+            
+            document.getElementById('p2_20').value = '0.2';
+            document.getElementById('p2_21').value = '0.6';
+            document.getElementById('p2_22').value = '0.2';
+            
+            document.getElementById('init0').value = '1';
+            document.getElementById('init1').value = '0';
+            document.getElementById('init2').value = '0';
+        }
+        
+        generateMatrix();
+        generateMatrix2();
+    </script>
+</body>
+</html>
